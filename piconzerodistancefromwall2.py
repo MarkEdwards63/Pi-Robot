@@ -13,16 +13,25 @@ sonar1trig = 13 # spare pins on piconzero
 sonar1echo = 15
 sonar2trig = 38 # dedicated pin on piconzero for sonar trig and echo
 sonar2echo = 38 
-samples = 3         # number of samples for average
-variance = 2        # ignore readings 200% different to current average
-interval = 0.05     # interval between readings
-distancesamples1 = [10,10,10]
-distancesamples2 = [10,10,10]
+samples = 5         # number of samples for average
+variance = 0.5     # ignore readings 25% different to current average
+interval = 0.1     # interval between readings in seconds
+distancesamples1 = [20, 20, 20, 20, 20] # setup initial readings 
+distancesamples2 = distancesamples1
 
-mediumspeed = 15    # slow speed for medium turn
-fastspeed = 25      # slow speed for fast turn  
-speed = 50          # normal speed
-rateofchange = 2    # cm per interval
+sensoronright = 0   # set to 1 if on right 0 if on left
+piwidth = 10   # width of pi robot in cm
+runwidth = 70  # width of speed test run in cm
+mediumturndistance = 30 # distance from wall for medium turn
+fastturndistance = 15   # distance from wall for fast turn
+turnleft = 35
+turnright = 25
+hardturnleft = 45
+hardturnright = 10
+sensordeltaforturn = 2 # turn if difference between sensors in greater (cm)
+mediumspeed = 15   # slow speed for medium turn
+fastspeed = 30     # slow speed for fast turn  
+speed = 60         # normal speed
 
 #======================================================================
 # General Functions
@@ -42,6 +51,7 @@ def cleanup():
 #
 # getDistance(). Returns the distance in cm to the nearest reflecting object. 0 == no object
 def getDistance(trig, echo):
+#    print("trig", trig, "echo", echo)
     GPIO.setup(trig, GPIO.OUT)
     # Send 10us pulse to trigger
     GPIO.output(trig, True)
@@ -77,7 +87,6 @@ averagedistance1 = sum(distancesamples1) /samples
 for x in range(samples):
     distancesamples2[x] = getDistance(sonar2trig, sonar2echo)    
 averagedistance2 = sum(distancesamples2) / samples
-previousdistance = (averagedistance1 + averagedistance2) / 2
 
 pz.forward(speed)   # go go go
 
@@ -95,18 +104,23 @@ try:
             averagedistance1 = sum(distancesamples1) / samples
             print("Sonar 1", int(distance), distancesamples1, int(averagedistance1))
 
-        averagedistance = (averagedistance1 + averagedistance2) / 2 # use average of both sensors
+        # use average of both sensors
+        averagedistance = (averagedistance1 + averagedistance2) / 2
         pz.forward(speed)   # set speed back to default. will be overwritten if need for turn
-        
-        if (previousdistance - averagedistance) >= rateofchange:    # if moving left then turn right
+  
+        if averagedistance >= hardturnleft: # if too near wall then fast turn
+            pz.setMotor(0, speed - fastspeed)
+            print("Hard Left")
+        elif averagedistance >= turnleft: # if close to wall the turn
+            pz.setMotor(0, speed - mediumspeed)
+            print("Left")
+
+        if averagedistance <= hardturnright:
+            pz.setMotor(1, speed - fastspeed)
+            print("Hard Right")
+        elif averagedistance <= turnright:
             pz.setMotor(1, speed - mediumspeed)
             print("Right")
-
-        if (averagedistance - previousdistance) >= rateofchange:    # if moving right then turn left
-            pz.setMotor(0, speed - mediumspeed)
-            print(" Left")
-
-        previousdistance = averagedistance  # store last distance for next check
 
         for x in range(samples):
             time.sleep(interval)
@@ -116,21 +130,26 @@ try:
                 distancesamples2.append(distance)
             averagedistance2 = sum(distancesamples2) / samples
             print("Sonar 2", int(distance), distancesamples2, int(averagedistance2))
-            
-        averagedistance = (averagedistance1 + averagedistance2) / 2 # use average of both sensors
-        pz.forward(speed)   # set speed back to default. will be overwritten if need for turn     
-        
-        if (previousdistance - averagedistance) >= rateofchange:    # if moving left then turn right
+
+        averagedistance = (averagedistance1 + averagedistance2) / 2
+        pz.forward(speed)
+  
+        if averagedistance >= hardturnleft:
+            pz.setMotor(0, speed - fastspeed)
+            print("Hard Left")
+        elif averagedistance >= turnleft:
+            pz.setMotor(0, speed - mediumspeed)
+            print("Left")
+
+        if averagedistance <= hardturnright:
+            pz.setMotor(1, speed - fastspeed)
+            print("Hard Right")
+        elif averagedistance <= turnright:
             pz.setMotor(1, speed - mediumspeed)
             print("Right")
-
-        if (averagedistance - previousdistance) >= rateofchange:    # if moving right then turn left
-            pz.setMotor(0, speed - mediumspeed)
-            print(" Left")
-
-        previousdistance = averagedistance  # store last distance for next check
-
+            
 except KeyboardInterrupt:
     print ()
+
 finally:
     pz.cleanup()
