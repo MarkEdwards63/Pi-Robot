@@ -9,13 +9,13 @@ import RPi.GPIO as GPIO, time
 import piconzero as pz
 
 # Define Sonar Pin (Uses same pin for both Ping and Echo on piconzero dedicated pins)
-sonar1trig = 13 # spare pins on piconzero
-sonar1echo = 15
-sonar2trig = 38 # dedicated pin on piconzero for sonar trig and echo
-sonar2echo = 38 
+sonar1trig = 38 #  dedicated pin on piconzero for sonar trig and echo
+sonar1echo = 38
+sonar2trig = 13 # spare pins on piconzero
+sonar2echo = 15 
 samples = 8         # number of samples for average
 variance = 0.5     # ignore readings 25% different to current average
-interval = 0.1     # interval between readings in seconds
+interval = 0.05     # interval between readings in seconds
 distancesamples1 = [20, 20, 20, 20, 20, 20, 20, 20] # setup initial readings 
 distancesamples2 = [20, 20, 20, 20, 20, 20, 20, 20]
 
@@ -29,11 +29,12 @@ turnright = 20
 hardturnleft = 45
 hardturnright = 10
 sensordeltaforturn = 1.5 # turn if difference between sensors in greater (cm)
-mediumspeed = 15   # slow speed for medium turn
-fastspeed = 20     # slow speed for fast turn  
-speed = 100         # normal speed
+mediumspeed = 10   # slow speed for medium turn
+fastspeed = 15     # slow speed for fast turn  
+speed = 50         # normal speed
 rightwheel = 1      # wheel number for setMotor function
 leftwheel = 0
+frontturndistance = 15
 
 #======================================================================
 # General Functions
@@ -106,7 +107,7 @@ for x in range(samples):
     distancesamples2[x] = getDistance(sonar2trig, sonar2echo)    
 averagedistance2 = sum(distancesamples2) / samples
 
-lastdistance = (averagedistance1 + averagedistance2) / 2
+lastdistance = averagedistance2
 
 pz.forward(speed)   # go go go
 
@@ -117,13 +118,13 @@ try:
         time.sleep(interval)
         distance = getDistance(sonar1trig, sonar1echo)  # get distance from sonar 1
         
-        if distance <= 55: # if distance reading over 55 then discard as greater than distance between walls
-            del(distancesamples1[0])    # remove oldest value
-            distancesamples1.append(distance)   # append newest value
-            averagedistance1 = movingaverage(distancesamples1)  # get average of samples
-        else:
-            print("Faulty distance reading", distance)      
-        print("Sonar 1", int(distance), int((averagedistance1+averagedistance2)/2), distancesamples1)
+        #if distance <= 150: # if distance reading over 100 then discard as greater than distance between walls
+        del(distancesamples1[0])    # remove oldest value
+        distancesamples1.append(distance)   # append newest value
+        averagedistance1 = movingaverage(distancesamples1)  # get average of samples
+        #else:
+        #    print("Faulty distance reading 1", distance)      
+        print("Sonar 1", int(distance), int(averagedistance1), distancesamples1)
 
         time.sleep(interval)
         distance = getDistance(sonar2trig, sonar2echo)  # get distance from sonar 2
@@ -133,33 +134,39 @@ try:
             distancesamples2.append(distance) # append newest value
             averagedistance2 = movingaverage(distancesamples2)  # get average of samples
         else:
-            print("Faulty distance reading", distance)
+            print("Faulty distance reading 2", distance)
             distance = lastdistance
-        print("Sonar 2", int(distance), int((averagedistance1+averagedistance2)/2), distancesamples2)
+        print("Sonar 2", int(distance), int(averagedistance2), distancesamples2)
          
-        # use average of both sensors
-        averagedistance = (averagedistance1 + averagedistance2) / 2
-        pz.forward(speed)   # set speed back to default. will be overwritten if need for turn       
+        pz.forward(speed)   # set speed back to default. will be overwritten if need for turn     
 
+        if (averagedistance1 <= frontturndistance): # about to hit corner so turn right
+            pz.spinRight(speed - mediumspeed)
+            print("Corner ... spin right", averagedistance1)
+            time.sleep(interval)
+            distance = getDistance(sonar2trig, sonar2echo)  # get distance from sonar 2
+            while (distance >= 55):   # keep turning until good reading from side wall
+                time.sleep(interval)
+                distance = getDistance(sonar2trig, sonar2echo)  # get distance from sonar 2            
         # check if need to turn - slow down wheel on side to turn
-        if (averagedistance >= (lastdistance + sensordeltaforturn)): # heading left so turn right
+        elif (averagedistance2 >= (lastdistance + sensordeltaforturn)): # heading left so turn right
             pz.setMotor(rightwheel, speed - mediumspeed)
-            print("Turning Right 2", averagedistance, lastdistance)
-        elif (averagedistance <= (lastdistance - sensordeltaforturn)):  # heading right so turn left
+            print("Turning Right 2", averagedistance2, lastdistance)
+        elif (averagedistance2 <= (lastdistance - sensordeltaforturn)):  # heading right so turn left
             pz.setMotor(leftwheel, speed - mediumspeed)
-            print("Turning Left 2", averagedistance, lastdistance)    
-        elif averagedistance >= hardturnleft: # if too near wall then fast turn
+            print("Turning Left 2", averagedistance2, lastdistance)    
+        elif averagedistance2 >= hardturnleft: # if too near wall then fast turn
             pz.setMotor(leftwheel, speed - fastspeed)
-            print("Hard Left", averagedistance, distance)
-        elif averagedistance >= turnleft: # if close to wall then turn
+            print("Hard Left", averagedistance2, distance)
+        elif averagedistance2 >= turnleft: # if close to wall then turn
             pz.setMotor(leftwheel, speed - mediumspeed)
-            print("Left", averagedistance, distance)
-        elif averagedistance <= hardturnright:
+            print("Left", averagedistance2, distance)
+        elif averagedistance2 <= hardturnright:
             pz.setMotor(rightwheel, speed - fastspeed)
-            print("Hard Right", averagedistance, distance)
-        elif averagedistance <= turnright:
+            print("Hard Right", averagedistance2, distance)
+        elif averagedistance2 <= turnright:
             pz.setMotor(rightwheel, speed - mediumspeed)
-            print("Right", averagedistance, distance)
+            print("Right", averagedistance2, distance)
         lastdistance = distance
             
 except KeyboardInterrupt:
