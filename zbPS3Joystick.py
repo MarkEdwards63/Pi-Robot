@@ -18,6 +18,7 @@ interval = 0.05                         # Time between updates in seconds, small
 # Setup pygame and wait for the joystick to become available
 os.environ["SDL_VIDEODRIVER"] = "dummy" # Removes the need to have a GUI window
 pygame.init()
+
 pygame.display.set_mode((1,1))
 
 # Setup the ZeroBorg
@@ -237,12 +238,12 @@ try:
                     driveRight = -1
                     print("Down")
                 elif joystick.get_button(leftButton):
-                    driveLeft = 1
-                    driveRight = -1
-                    print("Left")
-                elif joystick.get_button(rightButton):
                     driveLeft = -1
                     driveRight = 1
+                    print("Left")
+                elif joystick.get_button(rightButton):
+                    driveLeft = 1
+                    driveRight = -1
                     print("RIght")
                 # Set the motors to the new speeds
                 ZB.SetMotor1(int(driveRight * 100))
