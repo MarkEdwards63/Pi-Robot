@@ -62,14 +62,14 @@ if joystickName == redJoystick:     # buttons are different on different control
     print("red")
     # Settings for the joystick 
     axisUpDown = 1                          # Joystick axis to read for up / down position
-    axisUpDownInverted = False              # Set this to True if up and down appear to be swapped
+    axisUpDownInverted = True              # Set this to True if up and down appear to be swapped
     axisLeftRight = 3                       # Joystick axis to read for left / right position
-    axisLeftRightInverted = False           # Set this to True if left and right appear to be swapped
+    axisLeftRightInverted = True           # Set this to True if left and right appear to be swapped
     buttonResetEpo = 7                      # Joystick button number to perform an EPO reset (Start)
     buttonSlow = 4                          # Joystick button number for driving slowly whilst held (L2)
     buttonFastTurn = 5                      # Joystick button number for turning fast (R2)
-    upButton = 0                            # Buttons for up/down/spin left/right
-    downButton = 3
+    upButton = 3                            # Buttons for up/down/spin left/right
+    downButton = 0
     leftButton = 2
     rightButton = 1
 elif joystickName == blueJoystick:
