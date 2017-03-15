@@ -30,8 +30,8 @@ fastspeed = 50     # slow speed for fast turn   20
 speed = 100         # normal speed
 speedLeft = speed
 speedRight = speed - 8
-mediumspeedLeft = 30
-mediumspeedRight = 30
+mediumspeedLeft = 25
+mediumspeedRight = 25
 fastspeedLeft = 40
 fastspeedRight = 40
 rightwheel = 1      # wheel number for setMotor function
@@ -132,28 +132,37 @@ try:
             distanceSide = lastDistanceSide
         print("ToF 2", count, distanceSide, lastDistanceSide)
          
-        pz.setMotor(leftwheel, speedLeft)   # set speed back to default. will be overwritten if need for turn       
-        pz.setMotor(rightwheel, speedRight)
+#        pz.setMotor(leftwheel, speedLeft)   # set speed back to default. will be overwritten if need for turn       
+#        pz.setMotor(rightwheel, speedRight)
 
         # check if need to turn - slow down wheel on side to turn
         if (distanceSide >= (lastDistanceSide + sensordeltaforturn)): # heading left so turn right
-            pz.setMotor(leftwheel, speedLeft - mediumspeedLeft)
+            pz.setMotor(rightwheel, speedRight)
+            pz.setMotor(leftwheel, speedLeft - fastspeedLeft)
             print("Turning Left 2", distanceSide, lastDistanceSide)
         elif (distanceSide <= (lastDistanceSide - sensordeltaforturn)):  # heading right so turn left
-            pz.setMotor(rightwheel, speedRight - mediumspeedRight)
+            pz.setMotor(rightwheel, speedRight - fastspeedRight)
+            pz.setMotor(leftwheel, speedLeft)
             print("Turning Right 2", distanceSide, lastDistanceSide)
         elif distanceSide >= hardturnleft: # if too near wall then fast turn
+            pz.setMotor(rightwheel, speedRight)
             pz.setMotor(leftwheel, speedLeft - fastspeedLeft)
             print("Hard Left", distanceSide, lastDistanceSide)
         elif distanceSide <= hardturnright:  # if too near wall then fast turn
             pz.setMotor(rightwheel, speedRight - fastspeedRight)
+            pz.setMotor(leftwheel, speedLeft)
             print("Hard Right", distanceSide, lastDistanceSide)
         elif distanceSide >= turnleft: # if close to wall then turn
+            pz.setMotor(rightwheel, speedRight)
             pz.setMotor(leftwheel, speedLeft - mediumspeedLeft)
             print("Bare Left", distanceSide, lastDistanceSide)
         elif distanceSide <= turnright:  # if close to wall then turn
+            pz.setMotor(leftwheel, speedLeft)
             pz.setMotor(rightwheel, speedRight - mediumspeedRight)
             print("Bare Right", distanceSide, lastDistanceSide)
+        else:
+            pz.setMotor(leftwheel, speedLeft)   # set speed back to default. w
+            pz.setMotor(rightwheel, speedRight)
 
         time.sleep(interval)
         lastDistanceSide = distanceSide     # set distance for checking movement to/from wall
