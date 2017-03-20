@@ -82,7 +82,7 @@ tof2 = VL53L0X.VL53L0X(address=0x2D)
 # call to start ranging 
 GPIO.output(sensor1_shutdown, GPIO.HIGH)
 time.sleep(0.50)
-tof1.start_ranging(VL53L0X.VL53L0X_LONG_RANGE_MODE)
+tof1.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
 
 # Set shutdown pin high for the second VL53L0X then 
 # call to start ranging 
@@ -130,18 +130,18 @@ try:
         distanceFront = tof1.get_distance()
         distanceSide =  tof2.get_distance()  # get distance from VL53
 
+        print("Front distance", int(frontturndistance), int(distanceFront), int(lastDistanceFront))
         if distanceFront >= 2000: # if distance reading over 2 metres then discard as greater than distance between walls
-            distanceFront = lastDistanceFront
             print("Faulty front distance reading", distanceFront)      
-        print("Front distance", int(frontturndistance), int(distanceFront))
+            distanceFront = lastDistanceFront
 
         pz.setMotor(leftwheel, speedLeft)
         pz.setMotor(rightwheel, speedRight)  # set speed back to default. will be overwritten if need for turn     
 
         if (distanceFront <= frontturndistance): # about to hit corner so turn right
             pz.spinRight(speed)
-#            pz.setMotor(leftwheel, speed)
-#            pz.setMotor(rightwheel, speed - cornerSpeed)
+#            pz.setMotor(leftwheel, speedLeft)
+#            pz.setMotor(rightwheel, speedRight - cornerSpeed)
             print("Corner ... spin right", distanceFront)
             time.sleep(interval)
             distanceFront = tof1.get_distance() 
@@ -150,65 +150,93 @@ try:
                 time.sleep(interval)
                 distanceFront = tof1.get_distance() 
                 print("Corner turning ...", distanceFront)
-            distanceSide = tof1.get_distance() 
 
+            # now check side wall until //
+            distanceSide = tof1.get_distance() 
             lastDistanceSide = distanceSide
             while (distanceSide <= lastDistanceSide):   # keep turning until parallel reading from side wall
                 time.sleep(interval)
                 lastDistanceSide = distanceSide
                 distanceSide = tof1.get_distance() # get distance from VL53
                 print("Corner turning still ...", distanceSide, lastDistanceSide)
-            pz.forward(speed)
+
+            pz.setMotor(leftwheel, speedLeft)
+            pz.setMotor(rightwheel, speedRight)
             onRun += 1 # finished that run so on to next
+
         # check if need to turn - slow down wheel on side to turn
         elif (distanceSide >= (lastDistanceSide + sensordeltaforturn)): # heading left so turn right
-            pz.setMotor(leftwheel, speed - mediumspeed)
+            pz.setMotor(rightwheel, speedRight)
+            pz.setMotor(leftwheel, speedLeft - fastspeedLeft)
             print("Turning Left 2", distanceSide, lastDistanceSide)
         elif (distanceSide <= (lastDistanceSide - sensordeltaforturn)):  # heading right so turn left
-            pz.setMotor(rightwheel, speed - mediumspeed)
-            print("Turning Right 2", distanceSide, lastDistanceSide)    
+            pz.setMotor(rightwheel, speedRight - fastspeedRight)
+            pz.setMotor(leftwheel, speedLeft)
+            print("Turning Right 2", distanceSide, lastDistanceSide)
         elif distanceSide >= hardturnleft: # if too near wall then fast turn
-            pz.setMotor(leftwheel, speed - fastspeed)
+            pz.setMotor(rightwheel, speedRight)
+            pz.setMotor(leftwheel, speedLeft - fastspeedLeft)
             print("Hard Left", distanceSide, lastDistanceSide)
-        elif distanceSide >= turnleft: # if close to wall then turn
-            pz.setMotor(leftwheel, speed - mediumspeed)
-            print("Left", distanceSide, lastDistanceSide)
         elif distanceSide <= hardturnright:  # if too near wall then fast turn
-            pz.setMotor(rightwheel, speed - fastspeed)
+            pz.setMotor(rightwheel, speedRight - fastspeedRight)
+            pz.setMotor(leftwheel, speedLeft)
             print("Hard Right", distanceSide, lastDistanceSide)
+        elif distanceSide >= turnleft: # if close to wall then turn
+            pz.setMotor(rightwheel, speedRight)
+            pz.setMotor(leftwheel, speedLeft - mediumspeedLeft)
+            print("Bare Left", distanceSide, lastDistanceSide)
         elif distanceSide <= turnright:  # if close to wall then turn
-            pz.setMotor(rightwheel, speed - mediumspeed)
-            print("Right", distanceSide, lastDistanceSide)
+            pz.setMotor(leftwheel, speedLeft)
+            pz.setMotor(rightwheel, speedRight - mediumspeedRight)
+            print("Bare Right", distanceSide, lastDistanceSide)
+        else:
+            pz.setMotor(leftwheel, speedLeft)   # set speed back to default. w
+            pz.setMotor(rightwheel, speedRight)
+
+        time.sleep(interval)
         lastDistanceSide = distanceSide     # set distance for checking movement to/from wall
 
     while onRun <= 20:   # run 4 go forward 72 cm and turn left
         # get new sensor value and add to range to calculate average
-
+        print("New Run ..................................")
         time.sleep(interval)
         distanceFront = tof1.get_distance()
         distanceSide =  tof2.get_distance()  # get distance from VL53
 
+        print("Front distance", int(frontturndistance), int(distanceFront), int(lastDistanceFront))
         if distanceFront >= 2000: # if distance reading over 2 meters then discard as greater than distance between walls
-            distanceFront = lastDistanceFront
             print("Faulty front distance reading", distanceFront)      
-        print("Front distance", int(frontturndistance), int(distanceFront))
+            distanceFront = lastDistanceFront
         
-        if distanceSide >= 360: # if distance reading over 36 cm then change 
-            turnleft = 490
-            turnright = 440
-            hardturnleft = 560
-            hardturnright = 400
-            print("Change side distance", distanceSide)
+        if distanceSide >= 360: # if distance reading over 36 cm then change
+            if onRun > 4:
+                # distance to far wall is 750 mm
+                turnleft = 650
+                turnright = 550
+                hardturnleft = 700
+                hardturnright = 500
+                frontturndistance = 200
+                print("Change side distance 2", distanceSide)
+            else:
+                # distance to far wall is 600 mm
+                turnleft = 440
+                turnright = 340
+                hardturnleft = 490
+                hardturnright = 290
+                frontturndistance = 550
+                print("Change side distance 1", distanceSide)
         else: # back to original settings
-            turnleft = 150
-            turnright = 100
-            hardturnleft = 200
-            hardturnright = 250
-            print("Change side distance", distanceSide)
+            turnleft = 180
+            turnright = 150
+            hardturnleft = 250
+            hardturnright = 80
+            frontturndistance = 190
+            print("Original side distance", distanceSide)
         
         print("Side distance", int(turnleft), int(distanceSide))
-        pz.forward(speed)   # set speed back to default. will be overwritten if need for turn     
-
+        pz.setMotor(leftwheel, speedLeft)
+        pz.setMotor(rightwheel, speedRight)
+        
         if (distanceFront <= frontturndistance): # about to hit corner so turn Left
             pz.spinLeft(speed)
             print("Corner ... spin Left", distanceFront)
@@ -216,43 +244,56 @@ try:
             lastDistanceFront = distanceFront
             distanceFront = tof1.get_distance() 
             
-            while (distanceFront <= 200):   # keep turning until bad reading from side wall
+            while (distanceFront <= frontturndistance + 50):   # keep turning until bad reading from side wall
                 time.sleep(interval)
                 distanceFront = tof1.get_distance() 
                 print("Corner turning ...", distanceFront)
-            distanceSide = tof1.get_distance() 
+            distanceSide = tof2.get_distance() 
 
             lastDistanceSide = distanceSide
             while (distanceSide <= lastDistanceSide):   # keep turning until good reading from side wall
                 time.sleep(interval)
                 lastDistanceSide = distanceSide
-                distanceSide = tof1.get_distance() # get distance from VL53
+                distanceSide = tof2.get_distance() # get distance from VL53
                 print("Corner turning still ...", distanceSide, lastDistanceSide)
-            pz.forward(speed)
+            pz.setMotor(leftwheel, speedLeft)
+            pz.setMotor(rightwheel, speedRight)
             onRun += 1 # finished that run so on to next
+
         # check if need to turn - slow down wheel on side to turn
         elif (distanceSide >= (lastDistanceSide + sensordeltaforturn)): # heading left so turn right
-            pz.setMotor(leftwheel, speed - mediumspeed)
+            pz.setMotor(rightwheel, speedRight)
+            pz.setMotor(leftwheel, speedLeft - fastspeedLeft)
             print("Turning Left 2", distanceSide, lastDistanceSide)
         elif (distanceSide <= (lastDistanceSide - sensordeltaforturn)):  # heading right so turn left
-            pz.setMotor(rightwheel, speed - mediumspeed)
-            print("Turning Right 2", distanceSide, lastDistanceSide)    
+            pz.setMotor(rightwheel, speedRight - fastspeedRight)
+            pz.setMotor(leftwheel, speedLeft)
+            print("Turning Right 2", distanceSide, lastDistanceSide)
         elif distanceSide >= hardturnleft: # if too near wall then fast turn
-            pz.setMotor(leftwheel, speed - fastspeed)
+            pz.setMotor(rightwheel, speedRight)
+            pz.setMotor(leftwheel, speedLeft - fastspeedLeft)
             print("Hard Left", distanceSide, lastDistanceSide)
-        elif distanceSide >= turnleft: # if close to wall then turn
-            pz.setMotor(leftwheel, speed - mediumspeed)
-            print("Left", distanceSide, lastDistanceSide)
         elif distanceSide <= hardturnright:  # if too near wall then fast turn
-            pz.setMotor(rightwheel, speed - fastspeed)
+            pz.setMotor(rightwheel, speedRight - fastspeedRight)
+            pz.setMotor(leftwheel, speedLeft)
             print("Hard Right", distanceSide, lastDistanceSide)
+        elif distanceSide >= turnleft: # if close to wall then turn
+            pz.setMotor(rightwheel, speedRight)
+            pz.setMotor(leftwheel, speedLeft - mediumspeedLeft)
+            print("Bare Left", distanceSide, lastDistanceSide)
         elif distanceSide <= turnright:  # if close to wall then turn
-            pz.setMotor(rightwheel, speed - mediumspeed)
-            print("Right", distanceSide, lastDistanceSide)
+            pz.setMotor(leftwheel, speedLeft)
+            pz.setMotor(rightwheel, speedRight - mediumspeedRight)
+            print("Bare Right", distanceSide, lastDistanceSide)
+        else:
+            pz.setMotor(leftwheel, speedLeft)   # set speed back to default. w
+            pz.setMotor(rightwheel, speedRight)
+           
         lastDistanceSide = distanceSide     # set distance for checking movement to/from wall
+
         
 except KeyboardInterrupt:
-    print ("KeyBoard Interript")
+    print ("KeyBoard Interrupt")
 
 finally:
     pz.cleanup()
